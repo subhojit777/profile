@@ -120,6 +120,11 @@ class Profile extends ContentEntityBase implements ProfileInterface {
       ->setDescription(t('The time that the profile was last edited.'))
       ->setRevisionable(TRUE);
 
+    $fields['default'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Default'))
+      ->setDescription(t('A boolean indicating whether the profile is a default one.'))
+      ->setRevisionable(TRUE);
+
     return $fields;
   }
 
@@ -258,6 +263,37 @@ class Profile extends ContentEntityBase implements ProfileInterface {
       'user:' . $this->getOwnerId(),
       'user_view',
     ]);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isDefault() {
+    return (bool) $this->get('default')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setDefault($default) {
+    $this->set('default', $default ? PROFILE_DEFAULT : PROFILE_NOT_DEFAULT);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function postSave(EntityStorageInterface $storage, $update = TRUE) {
+    parent::postSave($storage, $update);
+
+    $profiles = \Drupal\node\Entity\Node::loadMultiple();
+
+    // Ensure that all other profiles are set to not default.
+    foreach ($profiles as $profile) {
+      if ($profile->profile_id != $this->profile_id) {
+        $profile->setDefault(0);
+      }
+    }
   }
 
 }
